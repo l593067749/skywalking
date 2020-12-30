@@ -19,19 +19,23 @@
 package org.apache.skywalking.oap.server.receiver.envoy;
 
 import com.google.common.base.Strings;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import org.apache.skywalking.oap.server.library.module.ModuleConfig;
 
-/**
- * @author wusheng, gaohongtao
- */
 public class EnvoyMetricReceiverConfig extends ModuleConfig {
+    @Getter
+    private boolean acceptMetricsService = false;
     private String alsHTTPAnalysis;
+    @Getter
+    private String k8sServiceNameRule;
 
     public List<String> getAlsHTTPAnalysis() {
         if (Strings.isNullOrEmpty(alsHTTPAnalysis)) {
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
         return Arrays.stream(alsHTTPAnalysis.trim().split(",")).map(String::trim).collect(Collectors.toList());
     }
