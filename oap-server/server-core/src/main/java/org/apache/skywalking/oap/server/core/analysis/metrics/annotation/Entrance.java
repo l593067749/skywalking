@@ -18,10 +18,14 @@
 
 package org.apache.skywalking.oap.server.core.analysis.metrics.annotation;
 
-import java.lang.annotation.*;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import org.apache.skywalking.oap.server.core.analysis.metrics.Metrics;
 
 /**
- * @author peng-yongsheng
+ * The annotation indicates the entrance function of the OAL {@link Metrics} function
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

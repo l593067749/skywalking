@@ -19,41 +19,43 @@
 package org.apache.skywalking.oap.server.configuration.nacos;
 
 import com.alibaba.nacos.api.config.ConfigService;
-import com.alibaba.nacos.api.exception.NacosException;
+
 import com.google.common.collect.Sets;
 import org.apache.skywalking.oap.server.configuration.api.ConfigTable;
-import org.junit.Test;
-import org.powermock.reflect.Whitebox;
+import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
-/**
- * @author kezhenxu94
- */
 public class NacosConfigWatcherRegisterTest {
     @Test
-    public void shouldReadConfigs() throws NacosException {
+    public void shouldReadConfigs() throws Exception {
         final String group = "skywalking";
-        final String testKey1 = "receiver-trace.default.slowDBAccessThreshold";
+        final String testKey1 = "agent-analyzer.default.slowDBAccessThreshold";
         final String testVal1 = "test";
         final String testKey2 = "testKey";
         final String testVal2 = "testVal";
 
         final NacosServerSettings mockSettings = mock(NacosServerSettings.class);
         when(mockSettings.getGroup()).thenReturn(group);
+        when(mockSettings.getNamespace()).thenReturn("");
 
         final NacosConfigWatcherRegister mockRegister = spy(new NacosConfigWatcherRegister(mockSettings));
         final ConfigService mockConfigService = mock(ConfigService.class);
         when(mockConfigService.getConfig(testKey1, group, 1000)).thenReturn(testVal1);
         when(mockConfigService.getConfig(testKey2, group, 1000)).thenReturn(testVal2);
 
-        Whitebox.setInternalState(mockRegister, "configService", mockConfigService);
+        Field configServiceField = NacosConfigWatcherRegister.class.getDeclaredField("configService");
+        configServiceField.setAccessible(true);
+        configServiceField.set(mockRegister, mockConfigService);
 
-        final ConfigTable configTable = mockRegister.readConfig(Sets.newHashSet(testKey1, testKey2));
+        final ConfigTable configTable = mockRegister.readConfig(Sets.newHashSet(testKey1, testKey2)).get();
 
         assertEquals(2, configTable.getItems().size());
         Map<String, String> kvs = new HashMap<>();

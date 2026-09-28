@@ -18,19 +18,31 @@
 
 package org.apache.skywalking.oap.server.telemetry.none;
 
+import java.util.Collections;
 import org.apache.skywalking.oap.server.telemetry.api.MetricFamily;
 import org.apache.skywalking.oap.server.telemetry.api.MetricsCollector;
 
-import java.util.Collections;
-
 /**
  * No-op MetricFamily Collector.
- *
- * @author gaohongtao
  */
 public class MetricsCollectorNoop implements MetricsCollector {
     @Override
     public Iterable<MetricFamily> collect() {
         return Collections.emptyList();
+    }
+
+    @Override
+    public long heapMemoryUsage() {
+        return 0;
+    }
+
+    @Override
+    public long heapMemoryMax() {
+        return 0;
+    }
+
+    @Override
+    public long directMemoryUsage() {
+        return 0;
     }
 }

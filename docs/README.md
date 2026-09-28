@@ -1,34 +1,54 @@
 # Welcome
-**Here are SkyWalking 6 official documents. Welcome to join us**
 
-From here you can learn all about **SkyWalking**’s architecture, how to deploy and use SkyWalking, also develop based on SkyWalking.
+**This is the official documentation of SkyWalking 11. Welcome to the SkyWalking community!**
 
-- [Concepts and Designs](en/concepts-and-designs/README.md). Concepts and designs explain the most important core ideas about
-SkyWalking. You can learn from here if you want to understand what is going on under our cool features and visualization.
-- [Setup](en/setup/README.md). Setup contains guides for installing SkyWalking in different scenarios. As a platform, it provides
-several ways to provide observability, including monitoring and alarm of course. 
-- [Contributing Guides](en/guides/README.md). Guides are for PMC member, committer or new contributor. At here, you can know how to contribute from beginning.
-- [Protocols](en/protocols/README.md). Protocols show the communication ways between agents/probes and backend. Anyone, interested
-in uplink telemetry data, definitely should read this.
-- [FAQs](en/FAQ/README.md). Include a manifest, including already known setup problems, secondary developments experiments. When 
-you are facing a problem, check here first.
+SkyWalking is an open source observability platform for collecting, analyzing, aggregating, and visualizing data from services and cloud native infrastructures. It provides distributed tracing, service mesh telemetry analysis, metrics aggregation, alerting, and visualization capabilities.
 
+## Documentation Structure
 
-In addition, you might find these links interesting:
+### Concepts and Designs
+Understand the core architecture, terminology, and design principles of SkyWalking. Start with the [Overview](en/concepts-and-designs/overview.md).
 
-- The latest and old releases are all available at [Apache SkyWalking release page](http://skywalking.apache.org/downloads/). The change logs are [here](../CHANGES.md).
-- You can find the speaking schedules at Conf, online videos and articles about SkyWalking in [Community resource catalog](https://github.com/OpenSkywalking/Community).
-Also, if you have some related to us, welcome to submit a pull request to add.
-- We’re always looking for help improving our documentation and codes, so please don’t hesitate to [file an issue](https://github.com/apache/skywalking/issues/new) 
-if you see some problem. 
-Or better yet, submit your own contributions through pull request to help make them better.
+### Setup
+Installation and configuration guides for different deployment scenarios.
 
-___
-### Users from 5.x
-SkyWalking 5.x is still supported by the community. For the user plans to upgrade from 5.x to 6.x, you should know there are some definitions of concepts changed.
+- **Quick Start** - Get SkyWalking running with [Docker](en/setup/backend/backend-docker.md) or [Kubernetes](en/setup/backend/backend-k8s.md)
+- **Marketplace** - Explore all [out-of-box monitoring features](en/setup/backend/marketplace.md) for services, service mesh, Kubernetes, databases, message queues, and more
+- **Agent Compatibility** - Check [agent compatibility](en/setup/service-agent/agent-compatibility.md) for SkyWalking language agents
+- **Advanced Setup** - Storage options, cluster management, security, and dynamic configuration
 
-The most important two changed concepts are
-1. Application(in 5.x) is changed to **Service**(in 6.x), also Application Instance is changed to **Service Instance**.
-1. Service(in 5.x) is changed to **Endpoint**(in 6.x).
+### APIs
+Protocol specifications for integration, including [Telemetry APIs](en/api/trace-data-protocol-v3.md) for reporting data and [Query APIs](en/api/query-protocol.md) for retrieving data.
 
+### Customization
+Extend SkyWalking with custom analysis pipelines using [Observability Analysis Language](en/concepts-and-designs/oal.md), [Meter Analysis Language](en/concepts-and-designs/mal.md), and [Log Analysis Language](en/concepts-and-designs/lal.md).
 
+### Security
+[Suggestions](en/security/README.md) for keeping your SkyWalking deployment secure. For reporting security vulnerabilities, please follow the [ASF Security Policy](https://www.apache.org/security/).
+
+### Academy
+In-depth articles and papers about SkyWalking architecture and best practices.
+
+### FAQs
+[Solutions](en/FAQ/README.md) to common issues with setup and development.
+
+### Contributing Guides
+For contributors and committers - [contact the community](en/guides/community.md), learn how to [build](en/guides/How-to-build.md) and [test](en/guides/e2e.md) the project. For major features, see [SkyWalking Improvement Proposals](en/swip/readme.md).
+
+### Changelog
+Release notes and version history. See [current version](en/changes/changes.md) or browse all versions in the documentation menu.
+
+## Additional Resources
+
+- [Apache SkyWalking Downloads](https://skywalking.apache.org/downloads/) - Official releases
+- [SkyWalking WIKI](https://cwiki.apache.org/confluence/display/SKYWALKING/Home) - Additional context and events
+- [Community Resources](https://github.com/OpenSkywalking/Community) - Conference schedules, videos, and articles
+- [SkyWalking CLI](https://github.com/apache/skywalking-cli) - Command line interface
+
+## Getting Help
+
+- **Questions & Answers** - Post to [GitHub Discussions](https://github.com/apache/skywalking/discussions)
+- **Bug Reports** - File an [issue](https://github.com/apache/skywalking/issues/new) directly if you're certain it's a bug
+- **Slack Channels** - Join `#skywalking` for English or `#skywalking-cn` for Chinese discussions. To get an invite, send a request to dev@skywalking.apache.org
+
+We're always looking for help to improve our documentation and code. Feel free to contribute by submitting a pull request!

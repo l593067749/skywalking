@@ -18,35 +18,55 @@
 
 package org.apache.skywalking.oap.server.core.analysis.metrics;
 
-import lombok.*;
-import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.*;
-import org.apache.skywalking.oap.server.core.query.sql.Function;
+import com.google.gson.JsonObject;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.ConstOne;
+import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.Entrance;
+import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.MetricsFunction;
+import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
+import org.apache.skywalking.oap.server.core.storage.annotation.ElasticSearch;
 
-/**
- * @author wusheng
- */
 @MetricsFunction(functionName = "cpm")
 public abstract class CPMMetrics extends Metrics implements LongValueHolder {
 
     protected static final String VALUE = "value";
     protected static final String TOTAL = "total";
 
-    @Getter @Setter @Column(columnName = VALUE, isValue = true, function = Function.Avg) private long value;
-    @Getter @Setter @Column(columnName = TOTAL) private long total;
+    @Getter
+    @Setter
+    @ElasticSearch.EnableDocValues
+    @Column(name = VALUE, dataType = Column.ValueDataType.COMMON_VALUE)
+    @BanyanDB.MeasureField
+    private long value;
+    @Getter
+    @Setter
+    @Column(name = TOTAL, storageOnly = true)
+    @BanyanDB.MeasureField
+    private long total;
 
     @Entrance
     public final void combine(@ConstOne long count) {
         this.total += count;
     }
 
-    @Override public final void combine(Metrics metrics) {
-        CPMMetrics cpmMetrics = (CPMMetrics)metrics;
+    @Override
+    public final boolean combine(Metrics metrics) {
+        CPMMetrics cpmMetrics = (CPMMetrics) metrics;
         combine(cpmMetrics.total);
+        return true;
     }
 
-    @Override public void calculate() {
+    @Override
+    public void calculate() {
         this.value = total / getDurationInMinute();
+    }
+
+    @Override
+    protected void appendDebugFields(final JsonObject obj) {
+        obj.addProperty("total", total);
+        obj.addProperty("value", value);
     }
 }
 

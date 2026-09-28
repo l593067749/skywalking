@@ -18,32 +18,72 @@
 
 package org.apache.skywalking.oap.server.core.source;
 
-import lombok.*;
+import com.google.gson.JsonObject;
+import lombok.Getter;
+import lombok.Setter;
 
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_INSTANCE_CATALOG_NAME;
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_INSTANCE_JVM_MEMORY;
 
-/**
- * @author peng-yongsheng
- */
 @ScopeDeclaration(id = SERVICE_INSTANCE_JVM_MEMORY, name = "ServiceInstanceJVMMemory", catalog = SERVICE_INSTANCE_CATALOG_NAME)
 @ScopeDefaultColumn.VirtualColumnDefinition(fieldName = "entityId", columnName = "entity_id", isID = true, type = String.class)
 public class ServiceInstanceJVMMemory extends Source {
-    @Override public int scope() {
+    @Override
+    public int scope() {
         return DefaultScopeDefine.SERVICE_INSTANCE_JVM_MEMORY;
     }
 
-    @Override public String getEntityId() {
+    @Override
+    public String getEntityId() {
         return String.valueOf(id);
     }
 
-    @Getter @Setter private int id;
-    @Getter @Setter private String name;
-    @Getter @Setter private String serviceName;
-    @Getter @Setter @ScopeDefaultColumn.DefinedByField(columnName = "service_id") private int serviceId;
-    @Getter @Setter private boolean heapStatus;
-    @Getter @Setter private long init;
-    @Getter @Setter private long max;
-    @Getter @Setter private long used;
-    @Getter @Setter private long committed;
+    @Getter
+    @Setter
+    private String id;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "name", requireDynamicActive = true)
+    private String name;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "service_name", requireDynamicActive = true)
+    private String serviceName;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "service_id")
+    private String serviceId;
+    @Getter
+    @Setter
+    private boolean heapStatus;
+    @Getter
+    @Setter
+    private long init;
+    @Getter
+    @Setter
+    private long max;
+    @Getter
+    @Setter
+    private long used;
+    @Getter
+    @Setter
+    private long committed;
+
+    @Override
+    public String toJson() {
+        final JsonObject obj = new JsonObject();
+        obj.addProperty("scope", scope());
+        obj.addProperty("entityId", getEntityId());
+        obj.addProperty("timeBucket", getTimeBucket());
+        obj.addProperty("id", id);
+        obj.addProperty("name", name);
+        obj.addProperty("serviceName", serviceName);
+        obj.addProperty("serviceId", serviceId);
+        obj.addProperty("heapStatus", heapStatus);
+        obj.addProperty("init", init);
+        obj.addProperty("max", max);
+        obj.addProperty("used", used);
+        obj.addProperty("committed", committed);
+        return obj.toString();
+    }
 }

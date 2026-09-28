@@ -18,26 +18,38 @@
 
 package org.apache.skywalking.oap.server.core.analysis.metrics;
 
+import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.Entrance;
 import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.Expression;
 import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.MetricsFunction;
-import org.apache.skywalking.oap.server.core.query.sql.Function;
+import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
+import org.apache.skywalking.oap.server.core.storage.annotation.ElasticSearch;
 
-/**
- * @author wusheng
- */
 @MetricsFunction(functionName = "percent")
 public abstract class PercentMetrics extends Metrics implements IntValueHolder {
     protected static final String TOTAL = "total";
     protected static final String MATCH = "match";
     protected static final String PERCENTAGE = "percentage";
 
-    @Getter @Setter @Column(columnName = TOTAL) private long total;
-    @Getter @Setter @Column(columnName = PERCENTAGE, isValue = true, function = Function.Avg) private int percentage;
-    @Getter @Setter @Column(columnName = MATCH) private long match;
+    @Getter
+    @Setter
+    @Column(name = TOTAL, storageOnly = true)
+    @BanyanDB.MeasureField
+    private long total;
+    @Getter
+    @Setter
+    @ElasticSearch.EnableDocValues
+    @Column(name = PERCENTAGE, dataType = Column.ValueDataType.COMMON_VALUE)
+    @BanyanDB.MeasureField
+    private int percentage;
+    @Getter
+    @Setter
+    @Column(name = MATCH, storageOnly = true)
+    @BanyanDB.MeasureField
+    private long match;
 
     @Entrance
     public final void combine(@Expression boolean isMatch) {
@@ -47,16 +59,27 @@ public abstract class PercentMetrics extends Metrics implements IntValueHolder {
         total++;
     }
 
-    @Override public final void combine(Metrics metrics) {
-        total += ((PercentMetrics)metrics).total;
-        match += ((PercentMetrics)metrics).match;
+    @Override
+    public final boolean combine(Metrics metrics) {
+        total += ((PercentMetrics) metrics).total;
+        match += ((PercentMetrics) metrics).match;
+        return true;
     }
 
-    @Override public void calculate() {
-        percentage = (int)(match * 10000 / total);
+    @Override
+    public void calculate() {
+        percentage = (int) (match * 10000 / total);
     }
 
-    @Override public int getValue() {
+    @Override
+    public int getValue() {
         return percentage;
+    }
+
+    @Override
+    protected void appendDebugFields(final JsonObject obj) {
+        obj.addProperty("total", total);
+        obj.addProperty("match", match);
+        obj.addProperty("percentage", percentage);
     }
 }

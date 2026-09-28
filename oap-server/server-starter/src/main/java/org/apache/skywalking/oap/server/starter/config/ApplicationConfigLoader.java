@@ -18,33 +18,50 @@
 
 package org.apache.skywalking.oap.server.starter.config;
 
+import java.util.List;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.skywalking.oap.server.library.module.ApplicationConfiguration;
+import org.apache.skywalking.oap.server.library.module.ProviderNotFoundException;
+import org.apache.skywalking.oap.server.library.util.CollectionUtils;
+import org.apache.skywalking.oap.server.library.util.PropertyPlaceholderHelper;
+import org.apache.skywalking.oap.server.library.util.ResourceUtils;
+import org.apache.skywalking.oap.server.library.module.TerminalFriendlyTable;
+import org.yaml.snakeyaml.Yaml;
+
 import java.io.FileNotFoundException;
 import java.io.Reader;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
-import org.apache.skywalking.apm.util.PropertyPlaceholderHelper;
-import org.apache.skywalking.oap.server.library.module.ApplicationConfiguration;
-import org.apache.skywalking.oap.server.library.util.CollectionUtils;
-import org.apache.skywalking.oap.server.library.util.ResourceUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.yaml.snakeyaml.Yaml;
+
+import static org.apache.skywalking.oap.server.library.util.YamlConfigLoaderUtils.replacePropertyAndLog;
 
 /**
  * Initialize collector settings with following sources. Use application.yml as primary setting, and fix missing setting
  * by default settings in application-default.yml.
- *
+ * <p>
  * At last, override setting by system.properties and system.envs if the key matches moduleName.provideName.settingKey.
- *
- * @author peng-yongsheng, wusheng
  */
+@Slf4j
 public class ApplicationConfigLoader implements ConfigLoader<ApplicationConfiguration> {
+    private static final String DISABLE_SELECTOR = "-";
+    private static final String SELECTOR = "selector";
 
-    private static final Logger logger = LoggerFactory.getLogger(ApplicationConfigLoader.class);
+    private final TerminalFriendlyTable bootingParameters;
+    private final Yaml yaml;
+    @Getter
+    private final List<ApplicationConfiguration.ModuleConfiguration> resolvedConfigurations;
 
-    private final Yaml yaml = new Yaml();
+    public ApplicationConfigLoader(final TerminalFriendlyTable bootingParameters) {
+        this.bootingParameters = bootingParameters;
+        this.yaml = new Yaml();
+        this.resolvedConfigurations = new ArrayList<>();
+    }
 
-    @Override public ApplicationConfiguration load() throws ConfigFileNotFoundException {
+    @Override
+    public ApplicationConfiguration load() throws ConfigFileNotFoundException {
         ApplicationConfiguration configuration = new ApplicationConfiguration();
         this.loadConfig(configuration);
         this.overrideConfigBySystemEnv(configuration);
@@ -55,30 +72,45 @@ public class ApplicationConfigLoader implements ConfigLoader<ApplicationConfigur
     private void loadConfig(ApplicationConfiguration configuration) throws ConfigFileNotFoundException {
         try {
             Reader applicationReader = ResourceUtils.read("application.yml");
-            Map<String, Map<String, Map<String, ?>>> moduleConfig = yaml.loadAs(applicationReader, Map.class);
+            Map<String, Map<String, Object>> moduleConfig = yaml.loadAs(applicationReader, Map.class);
             if (CollectionUtils.isNotEmpty(moduleConfig)) {
+                selectConfig(moduleConfig);
                 moduleConfig.forEach((moduleName, providerConfig) -> {
                     if (providerConfig.size() > 0) {
-                        logger.info("Get a module define from application.yml, module name: {}", moduleName);
-                        ApplicationConfiguration.ModuleConfiguration moduleConfiguration = configuration.addModule(moduleName);
-                        providerConfig.forEach((name, propertiesConfig) -> {
-                            logger.info("Get a provider define belong to {} module, provider name: {}", moduleName, name);
-                            Properties properties = new Properties();
+                        log.info("Get a module define from application.yml, module name: {}", moduleName);
+                        ApplicationConfiguration.ModuleConfiguration moduleConfiguration = configuration.addModule(
+                            moduleName);
+                        providerConfig.forEach((providerName, config) -> {
+                            log.info(
+                                "Get a provider define belong to {} module, provider name: {}", moduleName,
+                                providerName
+                            );
+                            bootingParameters.addRow(new TerminalFriendlyTable.Row("module." + moduleName + ".provider", providerName));
+                            final Map<String, ?> propertiesConfig = (Map<String, ?>) config;
+                            final Properties properties = new Properties();
                             if (propertiesConfig != null) {
-                                propertiesConfig.forEach((key, value) -> {
-                                    properties.put(key, value);
-                                    final Object replaceValue = yaml.load(PropertyPlaceholderHelper.INSTANCE
-                                        .replacePlaceholders(value + "", properties));
-                                    if (replaceValue != null) {
-                                        properties.replace(key, replaceValue);
+                                propertiesConfig.forEach((propertyName, propertyValue) -> {
+                                    if (propertyValue instanceof Map) {
+                                        Properties subProperties = new Properties();
+                                        ((Map<String, ?>) propertyValue).forEach((key, value) -> {
+                                            subProperties.put(key, value);
+                                            replacePropertyAndLog(key, value, subProperties, providerName, yaml);
+                                        });
+                                        properties.put(propertyName, subProperties);
+                                    } else {
+                                        properties.put(propertyName, propertyValue);
+                                        replacePropertyAndLog(propertyName, propertyValue, properties, providerName, yaml);
                                     }
-                                    logger.info("The property with key: {}, value: {}, in {} provider", key, replaceValue.toString(), name);
                                 });
                             }
-                            moduleConfiguration.addProviderConfiguration(name, properties);
+                            moduleConfiguration.addProviderConfiguration(providerName, properties);
+                            resolvedConfigurations.add(moduleConfiguration);
                         });
                     } else {
-                        logger.warn("Get a module define from application.yml, but no provider define, use default, module name: {}", moduleName);
+                        log.warn(
+                            "Get a module define from application.yml, but no provider define, use default, module name: {}",
+                            moduleName
+                        );
                     }
                 });
             }
@@ -93,6 +125,39 @@ public class ApplicationConfigLoader implements ConfigLoader<ApplicationConfigur
         }
     }
 
+    private void selectConfig(final Map<String, Map<String, Object>> moduleConfiguration) {
+        Iterator<Map.Entry<String, Map<String, Object>>> moduleIterator = moduleConfiguration.entrySet().iterator();
+        while (moduleIterator.hasNext()) {
+            Map.Entry<String, Map<String, Object>> entry = moduleIterator.next();
+            final String moduleName = entry.getKey();
+            final Map<String, Object> providerConfig = entry.getValue();
+            if (!providerConfig.containsKey(SELECTOR)) {
+                continue;
+            }
+            final String selector = (String) providerConfig.get(SELECTOR);
+            final String resolvedSelector = PropertyPlaceholderHelper.INSTANCE.replacePlaceholders(
+                selector, System.getProperties()
+            );
+            providerConfig.entrySet().removeIf(e -> !resolvedSelector.equals(e.getKey()));
+
+            if (!providerConfig.isEmpty()) {
+                continue;
+            }
+
+            if (!DISABLE_SELECTOR.equals(resolvedSelector)) {
+                throw new ProviderNotFoundException(
+                    "no provider found for module " + moduleName + ", " +
+                        "if you're sure it's not required module and want to remove it, " +
+                        "set the selector to -"
+                );
+            }
+
+            // now the module can be safely removed
+            moduleIterator.remove();
+            log.info("Remove module {} without any provider", moduleName);
+        }
+    }
+
     private void overrideModuleSettings(ApplicationConfiguration configuration, String key, String value) {
         int moduleAndConfigSeparator = key.indexOf('.');
         if (moduleAndConfigSeparator <= 0) {
@@ -100,7 +165,8 @@ public class ApplicationConfigLoader implements ConfigLoader<ApplicationConfigur
         }
         String moduleName = key.substring(0, moduleAndConfigSeparator);
         String providerSettingSubKey = key.substring(moduleAndConfigSeparator + 1);
-        ApplicationConfiguration.ModuleConfiguration moduleConfiguration = configuration.getModuleConfiguration(moduleName);
+        ApplicationConfiguration.ModuleConfiguration moduleConfiguration = configuration.getModuleConfiguration(
+            moduleName);
         if (moduleConfiguration == null) {
             return;
         }
@@ -131,7 +197,9 @@ public class ApplicationConfigLoader implements ConfigLoader<ApplicationConfigur
             return;
         }
 
-        logger.info("The setting has been override by key: {}, value: {}, in {} provider of {} module through {}",
-            settingKey, value, providerName, moduleName, "System.properties");
+        log.info(
+            "The setting has been override by key: {}, value: {}, in {} provider of {} module through {}", settingKey,
+            value, providerName, moduleName, "System.properties"
+        );
     }
 }

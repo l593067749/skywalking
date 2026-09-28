@@ -18,50 +18,84 @@
 
 package org.apache.skywalking.oap.server.core.alarm.provider;
 
-import java.io.*;
+import java.io.FileNotFoundException;
+import java.io.Reader;
+import lombok.Getter;
+import org.apache.skywalking.oap.server.configuration.api.ConfigurationModule;
+import org.apache.skywalking.oap.server.configuration.api.DynamicConfigurationService;
 import org.apache.skywalking.oap.server.core.CoreModule;
-import org.apache.skywalking.oap.server.core.alarm.*;
-import org.apache.skywalking.oap.server.library.module.*;
+import org.apache.skywalking.oap.server.core.alarm.AlarmKernelService;
+import org.apache.skywalking.oap.server.core.alarm.AlarmModule;
+import org.apache.skywalking.oap.server.core.alarm.AlarmRulesWatcherService;
+import org.apache.skywalking.oap.server.core.alarm.AlarmStandardPersistence;
+import org.apache.skywalking.oap.server.core.alarm.AlarmStatusWatcherService;
+import org.apache.skywalking.oap.server.core.alarm.MetricsNotify;
+import org.apache.skywalking.oap.server.library.module.ModuleDefine;
+import org.apache.skywalking.oap.server.library.module.ModuleProvider;
+import org.apache.skywalking.oap.server.library.module.ModuleStartException;
+import org.apache.skywalking.oap.server.library.module.ServiceNotProvidedException;
 import org.apache.skywalking.oap.server.library.util.ResourceUtils;
 
 public class AlarmModuleProvider extends ModuleProvider {
 
     private NotifyHandler notifyHandler;
+    @Getter
+    private AlarmRulesWatcher alarmRulesWatcher;
 
-    @Override public String name() {
+    @Override
+    public String name() {
         return "default";
     }
 
-    @Override public Class<? extends ModuleDefine> module() {
+    @Override
+    public Class<? extends ModuleDefine> module() {
         return AlarmModule.class;
     }
 
-    @Override public ModuleConfig createConfigBeanIfAbsent() {
-        return new AlarmSettings();
+    @Override
+    public ConfigCreator newConfigCreator() {
+        return null;
     }
 
-    @Override public void prepare() throws ServiceNotProvidedException, ModuleStartException {
+    @Override
+    public void prepare() throws ServiceNotProvidedException, ModuleStartException {
+        alarmRulesWatcher = new AlarmRulesWatcher(new Rules(), this, getManager());
+        notifyHandler = new NotifyHandler(alarmRulesWatcher, getManager());
+        this.registerServiceImplementation(MetricsNotify.class, notifyHandler);
+        this.registerServiceImplementation(AlarmRulesWatcherService.class, alarmRulesWatcher);
+        this.registerServiceImplementation(AlarmStatusWatcherService.class, new AlarmStatusWatcher(getManager()));
+        this.registerServiceImplementation(AlarmKernelService.class,
+            new AlarmKernel(alarmRulesWatcher));
+    }
+
+    @Override
+    public void start() throws ServiceNotProvidedException, ModuleStartException {
+        DynamicConfigurationService dynamicConfigurationService = getManager().find(ConfigurationModule.NAME)
+                                                                              .provider()
+                                                                              .getService(
+                                                                                  DynamicConfigurationService.class);
+        dynamicConfigurationService.registerConfigChangeWatcher(alarmRulesWatcher);
+    }
+
+    @Override
+    public void notifyAfterCompleted() throws ServiceNotProvidedException, ModuleStartException {
         Reader applicationReader;
         try {
             applicationReader = ResourceUtils.read("alarm-settings.yml");
         } catch (FileNotFoundException e) {
             throw new ModuleStartException("can't load alarm-settings.yml", e);
         }
-        RulesReader reader = new RulesReader(applicationReader);
+        RulesReader reader = new RulesReader(applicationReader, getManager());
         Rules rules = reader.readRules();
-        notifyHandler = new NotifyHandler(rules);
-        notifyHandler.init(new AlarmStandardPersistence());
-        this.registerServiceImplementation(MetricsNotify.class, notifyHandler);
+        alarmRulesWatcher.initConfig(rules);
+        notifyHandler.init(new AlarmStandardPersistence(getManager()));
     }
 
-    @Override public void start() throws ServiceNotProvidedException, ModuleStartException {
-    }
-
-    @Override public void notifyAfterCompleted() throws ServiceNotProvidedException, ModuleStartException {
-        notifyHandler.initCache(getManager());
-    }
-
-    @Override public String[] requiredModules() {
-        return new String[] {CoreModule.NAME};
+    @Override
+    public String[] requiredModules() {
+        return new String[] {
+            CoreModule.NAME,
+            ConfigurationModule.NAME
+        };
     }
 }

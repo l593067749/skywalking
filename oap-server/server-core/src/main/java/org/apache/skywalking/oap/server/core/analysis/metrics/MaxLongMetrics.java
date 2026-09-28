@@ -18,19 +18,27 @@
 
 package org.apache.skywalking.oap.server.core.analysis.metrics;
 
-import lombok.*;
-import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.*;
+import com.google.gson.JsonObject;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.Entrance;
+import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.MetricsFunction;
+import org.apache.skywalking.oap.server.core.analysis.metrics.annotation.SourceFrom;
+import org.apache.skywalking.oap.server.core.storage.annotation.BanyanDB;
 import org.apache.skywalking.oap.server.core.storage.annotation.Column;
+import org.apache.skywalking.oap.server.core.storage.annotation.ElasticSearch;
 
-/**
- * @author liuhaoyang
- **/
 @MetricsFunction(functionName = "max")
 public abstract class MaxLongMetrics extends Metrics implements LongValueHolder {
 
     protected static final String VALUE = "value";
 
-    @Getter @Setter @Column(columnName = VALUE, isValue = true) private long value;
+    @Getter
+    @Setter
+    @ElasticSearch.EnableDocValues
+    @Column(name = VALUE, dataType = Column.ValueDataType.COMMON_VALUE)
+    @BanyanDB.MeasureField
+    private long value;
 
     @Entrance
     public final void combine(@SourceFrom long count) {
@@ -39,11 +47,19 @@ public abstract class MaxLongMetrics extends Metrics implements LongValueHolder 
         }
     }
 
-    @Override public final void combine(Metrics metrics) {
-        MaxLongMetrics maxLongMetrics = (MaxLongMetrics)metrics;
+    @Override
+    public final boolean combine(Metrics metrics) {
+        MaxLongMetrics maxLongMetrics = (MaxLongMetrics) metrics;
         combine(maxLongMetrics.value);
+        return true;
     }
 
-    @Override public void calculate() {
+    @Override
+    public void calculate() {
+    }
+
+    @Override
+    protected void appendDebugFields(final JsonObject obj) {
+        obj.addProperty("value", value);
     }
 }

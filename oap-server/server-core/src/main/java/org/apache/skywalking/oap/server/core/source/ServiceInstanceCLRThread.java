@@ -18,6 +18,7 @@
 
 package org.apache.skywalking.oap.server.core.source;
 
+import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,25 +26,63 @@ import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SE
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_INSTANCE_CLR_THREAD;
 
 /**
- * @author liuhaoyang
+ *
  **/
 @ScopeDeclaration(id = SERVICE_INSTANCE_CLR_THREAD, name = "ServiceInstanceCLRThread", catalog = SERVICE_INSTANCE_CATALOG_NAME)
 @ScopeDefaultColumn.VirtualColumnDefinition(fieldName = "entityId", columnName = "entity_id", isID = true, type = String.class)
 public class ServiceInstanceCLRThread extends Source {
-    @Override public int scope() {
+    @Override
+    public int scope() {
         return DefaultScopeDefine.SERVICE_INSTANCE_CLR_THREAD;
     }
 
-    @Override public String getEntityId() {
+    @Override
+    public String getEntityId() {
         return String.valueOf(id);
     }
 
-    @Getter @Setter private int id;
-    @Getter @Setter private String name;
-    @Getter @Setter private String serviceName;
-    @Getter @Setter @ScopeDefaultColumn.DefinedByField(columnName = "service_id") private int serviceId;
-    @Getter @Setter private long availableCompletionPortThreads;
-    @Getter @Setter private long availableWorkerThreads;
-    @Getter @Setter private long maxCompletionPortThreads;
-    @Getter @Setter private long maxWorkerThreads;
+    @Getter
+    @Setter
+    private String id;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "name", requireDynamicActive = true)
+    private String name;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "service_name", requireDynamicActive = true)
+    private String serviceName;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "service_id")
+    private String serviceId;
+    @Getter
+    @Setter
+    private long availableCompletionPortThreads;
+    @Getter
+    @Setter
+    private long availableWorkerThreads;
+    @Getter
+    @Setter
+    private long maxCompletionPortThreads;
+    @Getter
+    @Setter
+    private long maxWorkerThreads;
+
+    @Override
+    public String toJson() {
+        final JsonObject obj = new JsonObject();
+        obj.addProperty("scope", scope());
+        obj.addProperty("entityId", getEntityId());
+        obj.addProperty("timeBucket", getTimeBucket());
+        obj.addProperty("id", id);
+        obj.addProperty("name", name);
+        obj.addProperty("serviceName", serviceName);
+        obj.addProperty("serviceId", serviceId);
+        obj.addProperty("availableCompletionPortThreads", availableCompletionPortThreads);
+        obj.addProperty("availableWorkerThreads", availableWorkerThreads);
+        obj.addProperty("maxCompletionPortThreads", maxCompletionPortThreads);
+        obj.addProperty("maxWorkerThreads", maxWorkerThreads);
+        return obj.toString();
+    }
 }

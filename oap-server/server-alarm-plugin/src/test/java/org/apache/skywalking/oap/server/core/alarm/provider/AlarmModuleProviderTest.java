@@ -15,30 +15,32 @@
  * limitations under the License.
  *
  */
-package org.apache.skywalking.oap.server.core.alarm.provider;
 
-import org.apache.skywalking.oap.server.core.CoreModule;
-import org.apache.skywalking.oap.server.core.alarm.AlarmModule;
-import org.apache.skywalking.oap.server.library.module.ModuleProvider;
-import org.junit.Before;
-import org.junit.Test;
-import org.powermock.reflect.Whitebox;
+package org.apache.skywalking.oap.server.core.alarm.provider;
 
 import java.util.Iterator;
 import java.util.ServiceLoader;
+import org.apache.skywalking.oap.server.configuration.api.ConfigurationModule;
+import org.apache.skywalking.oap.server.core.CoreModule;
+import org.apache.skywalking.oap.server.core.alarm.AlarmModule;
+import org.apache.skywalking.oap.server.core.query.enumeration.Scope;
+import org.apache.skywalking.oap.server.core.storage.annotation.Column;
+import org.apache.skywalking.oap.server.core.storage.annotation.ValueColumnMetadata;
+import org.apache.skywalking.oap.server.library.module.ModuleProvider;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.apache.skywalking.oap.server.testing.util.ReflectUtil;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.doNothing;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
-/**
- * Created by dengming, 2019.04.22
- */
 public class AlarmModuleProviderTest {
 
     private AlarmModuleProvider moduleProvider;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         ServiceLoader<ModuleProvider> serviceLoader = ServiceLoader.load(ModuleProvider.class);
         Iterator<ModuleProvider> providerIterator = serviceLoader.iterator();
@@ -47,9 +49,13 @@ public class AlarmModuleProviderTest {
 
         moduleProvider = (AlarmModuleProvider) providerIterator.next();
 
-        moduleProvider.createConfigBeanIfAbsent();
+        moduleProvider.newConfigCreator();
 
         moduleProvider.prepare();
+        ValueColumnMetadata.INSTANCE.putIfAbsent(
+            "service_percent", "testColumn", Column.ValueDataType.COMMON_VALUE, 0, Scope.Service.getScopeId());
+        ValueColumnMetadata.INSTANCE.putIfAbsent(
+            "endpoint_percent", "testColumn", Column.ValueDataType.COMMON_VALUE, 0, Scope.Endpoint.getScopeId());
     }
 
     @Test
@@ -63,24 +69,20 @@ public class AlarmModuleProviderTest {
     }
 
     @Test
-    public void start() throws Exception {
-        moduleProvider.start();
-    }
-
-    @Test
     public void notifyAfterCompleted() throws Exception {
 
         NotifyHandler handler = mock(NotifyHandler.class);
 
-        doNothing().when(handler).initCache(null);
-
-        Whitebox.setInternalState(moduleProvider, "notifyHandler", handler);
+        ReflectUtil.setInternalState(moduleProvider, "notifyHandler", handler);
         moduleProvider.notifyAfterCompleted();
     }
 
     @Test
     public void requiredModules() {
         String[] modules = moduleProvider.requiredModules();
-        assertArrayEquals(new String[]{CoreModule.NAME}, modules);
+        assertArrayEquals(new String[] {
+            CoreModule.NAME,
+            ConfigurationModule.NAME
+        }, modules);
     }
 }

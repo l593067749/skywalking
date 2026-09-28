@@ -18,34 +18,75 @@
 
 package org.apache.skywalking.oap.server.core.source;
 
-import lombok.*;
+import com.google.gson.JsonObject;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import org.apache.skywalking.oap.server.core.analysis.manual.searchtag.Tag;
 
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SEGMENT;
 
-/**
- * @author peng-yongsheng
- */
+@ToString
 @ScopeDeclaration(id = SEGMENT, name = "Segment")
 public class Segment extends Source {
 
-    @Override public int scope() {
+    @Override
+    public int scope() {
         return DefaultScopeDefine.SEGMENT;
     }
 
-    @Override public String getEntityId() {
+    @Override
+    public String getEntityId() {
         return segmentId;
     }
 
-    @Setter @Getter private String segmentId;
-    @Setter @Getter private String traceId;
-    @Setter @Getter private int serviceId;
-    @Setter @Getter private int serviceInstanceId;
-    @Setter @Getter private String endpointName;
-    @Setter @Getter private int endpointId;
-    @Setter @Getter private long startTime;
-    @Setter @Getter private long endTime;
-    @Setter @Getter private int latency;
-    @Setter @Getter private int isError;
-    @Setter @Getter private byte[] dataBinary;
-    @Setter @Getter private int version;
+    @Setter
+    @Getter
+    private String segmentId;
+    @Setter
+    @Getter
+    private String traceId;
+    @Setter
+    @Getter
+    private String serviceId;
+    @Setter
+    @Getter
+    private String serviceInstanceId;
+    @Setter
+    @Getter
+    private String endpointId;
+    @Setter
+    @Getter
+    private long startTime;
+    @Setter
+    @Getter
+    private int latency;
+    @Setter
+    @Getter
+    private int isError;
+    @Setter
+    @Getter
+    private byte[] dataBinary;
+    @Setter
+    @Getter
+    private List<Tag> tags = new ArrayList<>();
+
+    @Override
+    public String toJson() {
+        final JsonObject obj = new JsonObject();
+        obj.addProperty("scope", scope());
+        obj.addProperty("entityId", getEntityId());
+        obj.addProperty("timeBucket", getTimeBucket());
+        obj.addProperty("segmentId", segmentId);
+        obj.addProperty("traceId", traceId);
+        obj.addProperty("serviceId", serviceId);
+        obj.addProperty("serviceInstanceId", serviceInstanceId);
+        obj.addProperty("endpointId", endpointId);
+        obj.addProperty("startTime", startTime);
+        obj.addProperty("latency", latency);
+        obj.addProperty("isError", isError);
+        return obj.toString();
+    }
 }

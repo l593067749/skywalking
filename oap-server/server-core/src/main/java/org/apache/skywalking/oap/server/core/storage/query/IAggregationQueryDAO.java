@@ -20,27 +20,41 @@ package org.apache.skywalking.oap.server.core.storage.query;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.skywalking.oap.server.core.analysis.Downsampling;
-import org.apache.skywalking.oap.server.core.query.entity.*;
-import org.apache.skywalking.oap.server.core.storage.*;
+import org.apache.skywalking.oap.server.core.query.input.Duration;
+import org.apache.skywalking.oap.server.core.query.input.TopNCondition;
+import org.apache.skywalking.oap.server.core.query.type.KeyValue;
+import org.apache.skywalking.oap.server.core.query.type.SelectedRecord;
+import org.apache.skywalking.oap.server.core.query.type.debugging.DebuggingSpan;
+import org.apache.skywalking.oap.server.core.query.type.debugging.DebuggingTraceContext;
+import org.apache.skywalking.oap.server.core.storage.DAO;
 
 /**
- * @author peng-yongsheng
+ * Query ordered list, based on storage side aggregation. Most storage supports `groupby`/`aggregation` query.
+ *
+ * @since 8.0.0
  */
 public interface IAggregationQueryDAO extends DAO {
+    default List<SelectedRecord> sortMetricsDebuggable(final TopNCondition condition,
+                                                       final String valueColumnName,
+                                                       final Duration duration,
+                                                       final List<KeyValue> additionalConditions) throws IOException {
+        DebuggingTraceContext traceContext = DebuggingTraceContext.TRACE_CONTEXT.get();
+        DebuggingSpan span = null;
+        try {
+            if (traceContext != null) {
+                span = traceContext.createSpan("Query Dao: sortMetrics");
+                span.setMsg("Condition: TopNCondition: " + condition + ", ValueColumnName: " + valueColumnName + ", Duration: " + duration + ", AdditionalConditions: " + additionalConditions);
+            }
+            return sortMetrics(condition, valueColumnName, duration, additionalConditions);
+        } finally {
+            if (traceContext != null && span != null) {
+                traceContext.stopSpan(span);
+            }
+        }
+    }
 
-    List<TopNEntity> getServiceTopN(final String indName, String valueCName, final int topN, final Downsampling downsampling,
-        final long startTB, final long endTB, final Order order) throws IOException;
-
-    List<TopNEntity> getAllServiceInstanceTopN(final String indName, String valueCName, final int topN, final Downsampling downsampling,
-        final long startTB, final long endTB, final Order order) throws IOException;
-
-    List<TopNEntity> getServiceInstanceTopN(final int serviceId, final String indName, String valueCName,
-        final int topN, final Downsampling downsampling, final long startTB, final long endTB, final Order order) throws IOException;
-
-    List<TopNEntity> getAllEndpointTopN(final String indName, String valueCName, final int topN, final Downsampling downsampling,
-        final long startTB, final long endTB, final Order order) throws IOException;
-
-    List<TopNEntity> getEndpointTopN(final int serviceId, final String indName, String valueCName, final int topN,
-        final Downsampling downsampling, final long startTB, final long endTB, final Order order) throws IOException;
+    List<SelectedRecord> sortMetrics(TopNCondition condition,
+                                     String valueColumnName,
+                                     Duration duration,
+                                     List<KeyValue> additionalConditions) throws IOException;
 }

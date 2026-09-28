@@ -18,19 +18,23 @@
 
 package org.apache.skywalking.oap.server.library.module;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import lombok.AccessLevel;
 import lombok.Setter;
 
 /**
  * The <code>ModuleProvider</code> is an implementation of a {@link ModuleDefine}.
- *
+ * <p>
  * And each moduleDefine can have one or more implementation, which depends on `application.yml`
- *
- * @author wu-sheng, peng-yongsheng
  */
 public abstract class ModuleProvider implements ModuleServiceHolder {
-    @Setter private ModuleManager manager;
-    @Setter private ModuleDefine moduleDefine;
+    @Setter
+    private ModuleManager manager;
+    @Setter(AccessLevel.PUBLIC)
+    private ModuleDefine moduleDefine;
+    @Setter(AccessLevel.PUBLIC)
+    private TerminalFriendlyTable bootingParameters;
     private final Map<Class<? extends Service>, Service> services = new HashMap<>();
 
     public ModuleProvider() {
@@ -51,9 +55,28 @@ public abstract class ModuleProvider implements ModuleServiceHolder {
     public abstract Class<? extends ModuleDefine> module();
 
     /**
-     * @return ModuleConfig
+     * Create a config creator to initialize this configuration of this module provider
+     * @return creator instance to initialize the configuration with callback. Or return null if no config is required.
      */
-    public abstract ModuleConfig createConfigBeanIfAbsent();
+    public abstract ConfigCreator<? extends ModuleConfig> newConfigCreator();
+
+    /**
+     * Configuration creator to provide Module Config to initialize
+     * @param <T> class type of the config
+     */
+    public interface ConfigCreator<T extends ModuleConfig> {
+        /**
+         * Declare the type of the config class
+         * @return class type
+         */
+        Class<T> type();
+
+        /**
+         * Callback when the ModuleManager kernel has initialized this configuration.
+         * @param initialized instance of the given {@link #type()}
+         */
+        void onInitialized(T initialized);
+    }
 
     /**
      * In prepare stage, the moduleDefine should initialize things which are irrelative other modules.
@@ -71,14 +94,23 @@ public abstract class ModuleProvider implements ModuleServiceHolder {
     public abstract void notifyAfterCompleted() throws ServiceNotProvidedException, ModuleStartException;
 
     /**
+     * This callback executes once every module's {@link #notifyAfterCompleted()} has returned, which is when the
+     * boot is complete. The core opens its gRPC and HTTP ports here, so a request cannot arrive while a module is
+     * still doing its boot-time work in {@link #notifyAfterCompleted()}.
+     */
+    public void notifyBootCompleted() throws ServiceNotProvidedException, ModuleStartException {
+    }
+
+    /**
      * @return moduleDefine names which does this moduleDefine require?
      */
     public abstract String[] requiredModules();
 
     /**
-     * Register a implementation for the service of this moduleDefine provider.
+     * Register an implementation for the service of this moduleDefine provider.
      */
-    @Override public final void registerServiceImplementation(Class<? extends Service> serviceType,
+    @Override
+    public final void registerServiceImplementation(Class<? extends Service> serviceType,
         Service service) throws ServiceNotProvidedException {
         if (serviceType.isInstance(service)) {
             this.services.put(serviceType, service);
@@ -108,21 +140,30 @@ public abstract class ModuleProvider implements ModuleServiceHolder {
         }
     }
 
-    @Override public @SuppressWarnings("unchecked") <T extends Service> T getService(
-        Class<T> serviceType) throws ServiceNotProvidedException {
+    @Override
+    public @SuppressWarnings("unchecked")
+    <T extends Service> T getService(Class<T> serviceType) throws ServiceNotProvidedException {
         Service serviceImpl = services.get(serviceType);
         if (serviceImpl != null) {
-            return (T)serviceImpl;
+            return (T) serviceImpl;
         }
 
         throw new ServiceNotProvidedException("Service " + serviceType.getName() + " should not be provided, based on moduleDefine define.");
     }
 
-    ModuleDefine getModule() {
+    public ModuleDefine getModule() {
         return moduleDefine;
     }
 
     String getModuleName() {
         return moduleDefine.name();
+    }
+
+    protected void setBootingParameter(String name, String value) {
+        bootingParameters.addRow(new TerminalFriendlyTable.Row(name, value));
+    }
+
+    protected void setBootingParameter(String name, long value) {
+        bootingParameters.addRow(new TerminalFriendlyTable.Row(name, String.valueOf(value)));
     }
 }

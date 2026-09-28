@@ -18,6 +18,7 @@
 
 package org.apache.skywalking.oap.server.core.source;
 
+import com.google.gson.JsonObject;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,25 +26,63 @@ import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SE
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.SERVICE_INSTANCE_CLR_GC;
 
 /**
- * @author liuhaoyang
+ *
  **/
 @ScopeDeclaration(id = SERVICE_INSTANCE_CLR_GC, name = "ServiceInstanceCLRGC", catalog = SERVICE_INSTANCE_CATALOG_NAME)
 @ScopeDefaultColumn.VirtualColumnDefinition(fieldName = "entityId", columnName = "entity_id", isID = true, type = String.class)
 public class ServiceInstanceCLRGC extends Source {
-    @Override public int scope() {
+    @Override
+    public int scope() {
         return DefaultScopeDefine.SERVICE_INSTANCE_CLR_GC;
     }
 
-    @Override public String getEntityId() {
+    @Override
+    public String getEntityId() {
         return String.valueOf(id);
     }
 
-    @Getter @Setter private int id;
-    @Getter @Setter private String name;
-    @Getter @Setter private String serviceName;
-    @Getter @Setter @ScopeDefaultColumn.DefinedByField(columnName = "service_id") private int serviceId;
-    @Getter @Setter private long gen0CollectCount;
-    @Getter @Setter private long gen1CollectCount;
-    @Getter @Setter private long gen2CollectCount;
-    @Getter @Setter private long heapMemory;
+    @Getter
+    @Setter
+    private String id;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "name", requireDynamicActive = true)
+    private String name;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "service_name", requireDynamicActive = true)
+    private String serviceName;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "service_id")
+    private String serviceId;
+    @Getter
+    @Setter
+    private long gen0CollectCount;
+    @Getter
+    @Setter
+    private long gen1CollectCount;
+    @Getter
+    @Setter
+    private long gen2CollectCount;
+    @Getter
+    @Setter
+    private long heapMemory;
+
+    @Override
+    public String toJson() {
+        final JsonObject obj = new JsonObject();
+        obj.addProperty("scope", scope());
+        obj.addProperty("entityId", getEntityId());
+        obj.addProperty("timeBucket", getTimeBucket());
+        obj.addProperty("id", id);
+        obj.addProperty("name", name);
+        obj.addProperty("serviceName", serviceName);
+        obj.addProperty("serviceId", serviceId);
+        obj.addProperty("gen0CollectCount", gen0CollectCount);
+        obj.addProperty("gen1CollectCount", gen1CollectCount);
+        obj.addProperty("gen2CollectCount", gen2CollectCount);
+        obj.addProperty("heapMemory", heapMemory);
+        return obj.toString();
+    }
 }

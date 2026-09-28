@@ -18,27 +18,51 @@
 
 package org.apache.skywalking.oap.server.core.alarm;
 
-import lombok.*;
+import com.google.gson.JsonObject;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.skywalking.oap.server.core.analysis.manual.searchtag.Tag;
+
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Alarm message represents the details of each alarm.
- *
- * @author wusheng, peng-yongsheng
  */
-@Setter(AccessLevel.PUBLIC)
-@Getter(AccessLevel.PUBLIC)
+@Setter
+@Getter
 public class AlarmMessage {
-
-    public static AlarmMessage NONE = new NoAlarm();
-
     private int scopeId;
+    private String scope;
     private String name;
-    private int id0;
-    private int id1;
+    private String id0;
+    private String id1;
+    private String ruleName;
     private String alarmMessage;
+    private List<Tag> tags;
     private long startTime;
+    private transient int period;
+    private Set<String> hooks = new HashSet<>();
+    private String expression;
+    private JsonObject mqeMetricsSnapshot;
+    private String uuid;
+    /**
+     * The layer(s) the alarmed entity belongs to at alarm-mint time.
+     * Empty list when the layer is unknown (rare; covers entities for which
+     * MetadataQueryService returns no layer mapping).
+     */
+    private List<String> layers = Collections.emptyList();
 
-    private static class NoAlarm extends AlarmMessage {
+    public AlarmMessage(String uuid) {
+        this.uuid = uuid;
+    }
 
+    public AlarmMessage() {
+        this.uuid = UUID.randomUUID().toString();
     }
 }

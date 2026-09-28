@@ -18,33 +18,146 @@
 
 package org.apache.skywalking.oap.server.core.source;
 
-import lombok.*;
+import com.google.gson.JsonObject;
+import java.util.List;
+import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.skywalking.oap.server.core.analysis.ISourceDecorator;
+import org.apache.skywalking.oap.server.core.analysis.Layer;
+import org.apache.skywalking.oap.server.core.analysis.SourceDecoratorManager;
+import org.apache.skywalking.oap.server.library.util.StringUtil;
+import org.apache.skywalking.oap.server.core.analysis.IDManager;
 
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.ENDPOINT;
 import static org.apache.skywalking.oap.server.core.source.DefaultScopeDefine.ENDPOINT_CATALOG_NAME;
 
-/**
- * @author peng-yongsheng
- */
 @ScopeDeclaration(id = ENDPOINT, name = "Endpoint", catalog = ENDPOINT_CATALOG_NAME)
 @ScopeDefaultColumn.VirtualColumnDefinition(fieldName = "entityId", columnName = "entity_id", isID = true, type = String.class)
+@Slf4j
 public class Endpoint extends Source {
-    @Override public int scope() {
+    private String entityId;
+
+    @Override
+    public int scope() {
         return DefaultScopeDefine.ENDPOINT;
     }
 
-    @Override public String getEntityId() {
-        return String.valueOf(id);
+    @Override
+    public String getEntityId() {
+        if (StringUtil.isEmpty(entityId)) {
+            entityId = IDManager.EndpointID.buildId(serviceId, name);
+        }
+        return entityId;
     }
 
-    @Getter @Setter private int id;
-    @Getter @Setter private String name;
-    @Getter @Setter @ScopeDefaultColumn.DefinedByField(columnName = "service_id") private int serviceId;
-    @Getter @Setter private String serviceName;
-    @Getter @Setter @ScopeDefaultColumn.DefinedByField(columnName = "service_instance_id") private int serviceInstanceId;
-    @Getter @Setter private String serviceInstanceName;
-    @Getter @Setter private int latency;
-    @Getter @Setter private boolean status;
-    @Getter @Setter private int responseCode;
-    @Getter @Setter private RequestType type;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "name", requireDynamicActive = true)
+    private String name;
+    @Getter
+    @ScopeDefaultColumn.DefinedByField(columnName = "service_id")
+    @ScopeDefaultColumn.BanyanDB(shardingKeyIdx = 0)
+    private String serviceId;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "service_name", requireDynamicActive = true)
+    private String serviceName;
+    @Getter
+    @Setter
+    private String serviceInstanceName;
+    @Getter
+    @Setter
+    private int latency;
+    @Getter
+    @Setter
+    private boolean status;
+    @Getter
+    @Setter
+    private int httpResponseStatusCode;
+    @Getter
+    @Setter
+    private String rpcStatusCode;
+    @Getter
+    @Setter
+    private RequestType type;
+    @Getter
+    @Setter
+    private List<String> tags;
+    @Setter
+    private Map<String, String> originalTags;
+    @Getter
+    @Setter
+    private SideCar sideCar = new SideCar();
+    @Getter
+    @Setter
+    private Layer serviceLayer;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "attr0", isAttribute = true)
+    private String attr0;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "attr1", isAttribute = true)
+    private String attr1;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "attr2", isAttribute = true)
+    private String attr2;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "attr3", isAttribute = true)
+    private String attr3;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "attr4", isAttribute = true)
+    private String attr4;
+    @Getter
+    @Setter
+    @ScopeDefaultColumn.DefinedByField(columnName = "attr5", isAttribute = true)
+    private String attr5;
+
+    /**
+     * Get the decorator through given name and invoke.
+     * @param decorator The decorator class simpleName.
+     */
+    public void decorate(String decorator) {
+        ISourceDecorator<ISource> sourceDecorator = SourceDecoratorManager.DECORATOR_MAP.get(decorator);
+        sourceDecorator.decorate(this);
+    }
+
+    @Override
+    public void prepare() {
+        serviceId = IDManager.ServiceID.buildId(serviceName, serviceLayer.isNormal());
+    }
+
+    public String getTag(String key) {
+        return originalTags.get(key);
+    }
+
+    @Override
+    public String toJson() {
+        final JsonObject obj = new JsonObject();
+        obj.addProperty("scope", scope());
+        obj.addProperty("entityId", getEntityId());
+        obj.addProperty("timeBucket", getTimeBucket());
+        obj.addProperty("name", name);
+        obj.addProperty("serviceId", serviceId);
+        obj.addProperty("serviceName", serviceName);
+        obj.addProperty("serviceLayer", serviceLayer == null ? null : serviceLayer.name());
+        obj.addProperty("serviceInstanceName", serviceInstanceName);
+        obj.addProperty("latency", latency);
+        obj.addProperty("status", status);
+        obj.addProperty("httpResponseStatusCode", httpResponseStatusCode);
+        obj.addProperty("rpcStatusCode", rpcStatusCode);
+        obj.addProperty("type", type == null ? null : type.name());
+        obj.addProperty("attr0", attr0);
+        obj.addProperty("attr1", attr1);
+        obj.addProperty("attr2", attr2);
+        obj.addProperty("attr3", attr3);
+        obj.addProperty("attr4", attr4);
+        obj.addProperty("attr5", attr5);
+        return obj.toString();
+    }
 }
